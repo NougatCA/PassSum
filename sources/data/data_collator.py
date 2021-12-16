@@ -8,38 +8,32 @@ from data.vocab import Vocab
 import enums
 
 
-def collate_fn(batch, args, uni_vocab):
+def collate_fn(batch, args, code_vocab, node_vocab):
     """
     Data collator function.
     """
     model_inputs = {}
 
-    code_raw, nl_raw = map(list, zip(*batch))
+    code_raw, path_raw, nl_raw = map(list, zip(*batch))
 
-    model_inputs['input_ids'], model_inputs['attention_mask'] = get_batch_inputs(
+    model_inputs['code_input_ids'], model_inputs['attention_mask'] = get_batch_inputs(
         batch=code_raw,
-        vocab=uni_vocab,
-        processor=Vocab.eos_processor,
+        vocab=code_vocab,
+        processor=Vocab.sep_processor,
         max_len=args.max_code_len
     )
-
-    # id_inputs,
-    #         id_seq_lens,
-    #         node_inputs,
-    #         node_seq_lens,
-    #         path_seq_lens,
 
     model_inputs['id_inputs'], model_inputs['id_seq_lens'], model_inputs['node_inputs'], model_inputs['node_seq_lens']
 
     model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
         batch=nl_raw,
-        vocab=uni_vocab,
+        vocab=code_vocab,
         processor=Vocab.sos_processor,
         max_len=args.max_nl_len,
     )
     model_inputs['labels'], _ = get_batch_inputs(
         batch=nl_raw,
-        vocab=uni_vocab,
+        vocab=code_vocab,
         processor=Vocab.eos_processor,
         max_len=args.max_nl_len,
     )

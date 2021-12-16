@@ -11,7 +11,7 @@ from data.vocab import Vocab, init_vocab, load_vocab
 from utils.general import count_params, human_format, layer_wise_parameters
 from utils.trainer import CodeTrainer, CodeCLSTrainer
 from utils.callbacks import LogStateCallBack
-from models.bart import BartForClassificationAndGeneration
+from models.model import BartForClassificationAndGeneration
 
 logger = logging.getLogger(__name__)
 

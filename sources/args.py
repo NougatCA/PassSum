@@ -33,7 +33,7 @@ class RuntimeArguments:
     )
 
     n_epoch: int = field(
-        default=500,
+        default=200,
         metadata={'help': 'Number of data iterations for training'}
     )
 
@@ -122,6 +122,11 @@ class PreprocessingArguments:
     max_code_len: int = field(
         default=256,
         metadata={'help': 'Maximum length of code sequence'}
+    )
+
+    max_path_len: int = field(
+        default=100,
+        metadata={'help': 'Maximum length of path sequence'}
     )
 
     max_nl_len: int = field(

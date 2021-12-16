@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def train(
         args,
         trained_model: Union[BartForConditionalGeneration, str] = None,
-        trained_vocab: Union[Vocab, str] = None):
+        trained_vocab: Union[Tuple[Vocab, Vocab], str] = None):
     """
     Fine-tuning from given pre-trained model and vocabs, or training from scratch.
 
@@ -22,7 +22,7 @@ def train(
         args (argparse.Namespace): Arguments
         trained_model (Union[BartForConditionalGeneration, str]): Optional,
             instance or directory of ``BartForClassificationAndGeneration``, must given when ``only_test`` is True
-        trained_vocab (Union[Tokenizer, str]): Optional, Tuple of instances or directory of three
+        trained_vocab (Union[Tuple[Vocab, Vocab], str]): Optional, Tuple of instances or directory of three
             vocabularies, must given when ``only_test`` is True
 
     """
@@ -34,8 +34,8 @@ def train(
 
     if trained_vocab is None and args.trained_vocab is not None:
         trained_vocab = args.trained_vocab
-    assert not args.only_test or isinstance(trained_vocab, str) or isinstance(trained_vocab, Vocab), \
-        f'The vocab type is not supported, expect Vocab or string of path, got {type(trained_vocab)}'
+    assert not args.only_test or isinstance(trained_vocab, str) or isinstance(trained_vocab, (Vocab, Vocab)), \
+        f'The vocab type is not supported, expect tuple of Vocab or string of path, got {type(trained_vocab)}'
 
     logger.info('*' * 100)
     if trained_model:

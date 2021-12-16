@@ -13,6 +13,7 @@ from utils.general import count_params, human_format, layer_wise_parameters
 from eval.metrics import bleu, meteor, rouge_l, avg_ir_metrics, accuracy_for_sequence
 from utils.callbacks import LogStateCallBack
 from utils.trainer import CodeTrainer
+from models.model import PassSum
 import enums
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 def run_summarization(
         args,
         trained_model: Union[BartForConditionalGeneration, str] = None,
-        trained_vocab: Union[Vocab, str] = None,
+        trained_vocab: Union[Tuple[Vocab, Vocab], str] = None,
         only_test=False):
     """
     Fine-tuning from given pre-trained model and vocabs, or training from scratch.
@@ -52,22 +53,21 @@ def run_summarization(
     # --------------------------------------------------
     logger.info('-' * 100)
     if trained_vocab:
-        if isinstance(trained_vocab, Vocab):
+        if isinstance(trained_vocab, tuple):
             logger.info('Vocabularies are passed through parameter')
-            uni_vocab = trained_vocab
+            code_vocab, node_vocab = trained_vocab
         else:
             logger.info('Loading vocabularies from files')
-            uni_vocab = load_vocab(vocab_root=trained_vocab, name=args.vocab_name)
+            code_vocab, node_vocab = load_vocab(vocab_root=trained_vocab, name=args.vocab_name)
     else:
         logger.info('Building vocabularies')
-        uni_vocab = init_vocab(vocab_save_dir=args.vocab_save_dir,
-                               name=args.vocab_name,
-                               method=args.tokenize_method,
-                               vocab_size=args.vocab_size,
-                               datasets=[datasets['train'].codes, datasets['train'].nls],
-                               ignore_case=True,
-                               save_root=args.vocab_root)
-    logger.info(f'The size of uni-vocabulary: {len(uni_vocab)}')
+        code_vocab, node_vocab = init_vocab(
+            vocab_save_dir=args.vocab_save_dir,
+            code_vocab_size=args.code_vocab_size,
+            datasets=(datasets['train'].codes, datasets['train'].paths, datasets['train'].nls),
+            save_root=args.vocab_root)
+    logger.info(f'The size of code vocabulary: {len(code_vocab)}')
+    logger.info(f'The size of node vocabulary: {len(node_vocab)}')
     logger.info('Vocabularies built successfully')
 
     # --------------------------------------------------
@@ -85,8 +85,8 @@ def run_summarization(
                                                                  config=config)
     else:
         logger.info('Building the model')
-        config = BartConfig(vocab_size=len(uni_vocab),
-                            max_position_embeddings=1024,
+        config = BartConfig(vocab_size=len(code_vocab) + len(node_vocab),
+                            max_position_embeddings=512,
                             encoder_layers=args.n_layer,
                             encoder_ffn_dim=args.d_ff,
                             encoder_attention_heads=args.n_head,
@@ -107,7 +107,7 @@ def run_summarization(
                             min_length=1,
                             num_beams=args.beam_width,
                             num_labels=2)
-        model = BartForConditionalGeneration(config)
+        model = PassSum(config=config, node_vocab_size=len(node_vocab))
     # log model statistics
     logger.info('Trainable parameters: {}'.format(human_format(count_params(model))))
     table = layer_wise_parameters(model)
@@ -122,8 +122,8 @@ def run_summarization(
 
     def decode_preds(preds):
         preds, labels = preds
-        decoded_preds = uni_vocab.decode_batch(preds)
-        decoded_labels = uni_vocab.decode_batch(labels)
+        decoded_preds = code_vocab.decode_batch(preds)
+        decoded_labels = code_vocab.decode_batch(labels)
         return decoded_labels, decoded_preds
 
     # compute metrics

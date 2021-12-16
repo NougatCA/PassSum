@@ -16,7 +16,9 @@ from data.dataset import save_all_datasets
 
 def main(args):
 
-    train(args=args)
+    train(args=args,
+          trained_model=args.trained_model,
+          trained_vocab=args.trained_vocab)
 
     # model = None
     # vocab = None

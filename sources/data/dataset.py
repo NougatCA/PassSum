@@ -22,7 +22,7 @@ class CodeDataset(Dataset):
             args (argparse.Namespace): Arguments
             dataset_name (str): Name of the dataset
             language (str): Only for downstream fine-tuning
-            split (str): Only for downstream fine-tuning, support ['train', 'valid', 'test', 'codebase']
+            split (str): Only for downstream fine-tuning, support ['train', 'valid', 'test']
 
         """
         super(CodeDataset, self).__init__()
@@ -30,21 +30,23 @@ class CodeDataset(Dataset):
         self.dataset_name = dataset_name
         self.language = language
         self.split = split
-        self.paths = {}
+        self.paths_dict = {}
 
         assert language in [enums.LANG_JAVA, enums.LANG_PYTHON]
         assert split in ['train', 'valid', 'test']
         self.dataset_dir = os.path.join(args.dataset_root, language, split)
 
-        self.code_path = os.path.join(self.dataset_dir, 'split.token.code')
+        self.code_path = os.path.join(self.dataset_dir, 'source.code')
         self.nl_path = os.path.join(self.dataset_dir, 'raw.docstring')
 
-        self.paths, self.codes, self.nls = parse_for_summarization(code_path=self.code_path, nl_path=self.nl_path)
-        assert len(self.codes) == len(self.nls)
+        self.paths_dict, self.codes, self.paths, self.nls = parse_for_summarization(code_path=self.code_path,
+                                                                                    nl_path=self.nl_path,
+                                                                                    lang=language)
+        assert len(self.codes) == len(self.paths) == len(self.nls)
         self.size = len(self.codes)
 
     def __getitem__(self, index):
-        return self.codes[index], self.nls[index]
+        return self.codes[index], self.paths[index], self.nls[index]
 
     def __len__(self):
         return self.size
@@ -74,7 +76,7 @@ class CodeDataset(Dataset):
         return torch.utils.data.Subset(self, indices)
 
 
-def init_dataset(args, language=None, split=None, load_if_saved=True) -> CodeDataset:
+def init_dataset(args, language, split, load_if_saved=True) -> CodeDataset:
     """
     Find dataset, if the dataset is saved, load and return, else initialize and return.
 
@@ -88,7 +90,7 @@ def init_dataset(args, language=None, split=None, load_if_saved=True) -> CodeDat
         CodeDataset: Loaded or initialized dataset
 
     """
-    name = '.'.join([sub_name for sub_name in [language, split] if sub_name is not None])
+    name = f'{language}.{split}'
     if load_if_saved:
         path = os.path.join(args.dataset_save_dir, f'{name}.pk')
         if os.path.exists(path) and os.path.isfile(path):

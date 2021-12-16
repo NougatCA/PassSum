@@ -11,10 +11,11 @@ from data.data_collator import collate_fn
 
 class CodeTrainer(Seq2SeqTrainer):
 
-    def __init__(self, main_args: argparse.Namespace, uni_vocab, **kwargs):
+    def __init__(self, main_args: argparse.Namespace, code_vocab, node_vocab, **kwargs):
         super(CodeTrainer, self).__init__(**kwargs)
         self.main_args = main_args
-        self.uni_vocab = uni_vocab
+        self.code_vocab = code_vocab
+        self.node_vocab = node_vocab
 
     def get_train_dataloader(self) -> DataLoader:
         """
@@ -31,7 +32,8 @@ class CodeTrainer(Seq2SeqTrainer):
                           shuffle=True,
                           collate_fn=lambda batch: collate_fn(batch,
                                                               args=self.main_args,
-                                                              uni_vocab=self.uni_vocab))
+                                                              code_vocab=self.code_vocab,
+                                                              node_vocab=self.node_vocab))
 
     def get_eval_dataloader(self, eval_dataset: Optional[Dataset] = None) -> DataLoader:
         if eval_dataset:
@@ -40,11 +42,13 @@ class CodeTrainer(Seq2SeqTrainer):
                           batch_size=self.main_args.eval_batch_size,
                           collate_fn=lambda batch: collate_fn(batch,
                                                               args=self.main_args,
-                                                              uni_vocab=self.uni_vocab))
+                                                              code_vocab=self.code_vocab,
+                                                              node_vocab=self.node_vocab))
 
     def get_test_dataloader(self, test_dataset: Dataset) -> DataLoader:
         return DataLoader(dataset=test_dataset,
                           batch_size=self.main_args.eval_batch_size,
                           collate_fn=lambda batch: collate_fn(batch,
                                                               args=self.main_args,
-                                                              uni_vocab=self.uni_vocab))
+                                                              code_vocab=self.code_vocab,
+                                                              node_vocab=self.node_vocab))

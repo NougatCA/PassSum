@@ -6,10 +6,11 @@ from .rnn_encoder import RNNEncoder
 
 class PathEncoding(nn.Module):
 
-    def __init__(self, d_model, embedding: nn.Embedding):
+    def __init__(self, d_model, code_embedding: nn.Embedding, node_vocab_size: int):
         super(PathEncoding, self).__init__()
         self.d_model = d_model
-        self.embedding = embedding
+        self.code_embedding = code_embedding
+        self.node_embedding = nn.Embedding(node_vocab_size, d_model)
 
         self.id_encoder = RNNEncoder(hidden_size=self.d_model,
                                      rnn_type='gru')
@@ -19,8 +20,8 @@ class PathEncoding(nn.Module):
 
     def forward(self, id_inputs, id_seq_lens, node_inputs, node_seq_lens, path_seq_lens):
 
-        id_embedded = self.embedding(id_inputs)     # [B, T]
-        node_embedded = self.embedding(node_inputs)     # [B, T]
+        id_embedded = self.code_embedding(id_inputs)        # [B, T]
+        node_embedded = self.node_embedding(node_inputs)    # [B, T]
 
         # [path_B, H]
         _, id_hidden = self.id_encoder(embedded=id_embedded, seq_lens=id_seq_lens)

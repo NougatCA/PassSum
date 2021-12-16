@@ -374,32 +374,49 @@ def load_vocab(vocab_root, name) -> Vocab:
 
 
 def init_vocab(vocab_save_dir,
-               name,
-               method='word',
-               vocab_size=None,
-               datasets: Union[List[str], List[List[str]]] = None,
-               additional_special_symbols=None,
-               ignore_case=False,
-               save_root=None,
-               load_if_saved=True) -> Vocab:
-    vocab_name = '.'.join(
-        [sub_name for sub_name in [name, method, str(vocab_size)] if sub_name is not None])
-    path = os.path.join(vocab_save_dir, f'{vocab_name}.pk')
+               code_vocab_size,
+               datasets: tuple,
+               load_if_saved=True,
+               save_root=None) -> (Vocab, Vocab):
+    code_name = f'code.bpe.vocab.{code_vocab_size}'
+    node_name = f'node.word.vocab.none'
+    code_path = os.path.join(vocab_save_dir, code_name)
+    node_path = os.path.join(vocab_save_dir, node_name)
     if load_if_saved:
-        if os.path.exists(path) and os.path.isfile(path):
-            logger.info(f'Trying to load saved binary pickle file from: {path}')
-            with open(path, mode='rb') as f:
-                obj = pickle.load(f)
-            assert isinstance(obj, Vocab)
-            if save_root:
-                obj.save(save_root)
-            return obj
-    vocab = Vocab(name=name,
-                  method=method,
-                  vocab_size=vocab_size,
-                  datasets=datasets,
-                  additional_special_symbols=additional_special_symbols,
-                  ignore_case=ignore_case,
-                  save_root=save_root)
-    vocab.save_pickle(path)
-    return vocab
+        code_vocab, node_vocab = None, None
+        for vocab, path in [[code_vocab, code_path], [node_vocab, node_path]]:
+            if os.path.exists(path) and os.path.isfile(path):
+                logger.info(f'Trying to load saved binary pickle file from: {path}')
+                with open(path, mode='rb') as f:
+                    vocab = pickle.load(f)
+                assert isinstance(vocab, Vocab)
+                if save_root:
+                    vocab.save(save_root)
+        return code_vocab, node_vocab
+    # iterate through all datasets
+    codes, paths, nls = datasets
+    code_dataset = []
+    node_dataset = []
+    for code, path, nl in zip(codes, paths, nls):
+        code_dataset += code
+        code_dataset += nl
+        for p in path:
+            node_dataset += p[0]
+            code_dataset += p[1]
+
+    code_vocab = Vocab(name=code_name,
+                       method='bpe',
+                       vocab_size=code_vocab_size,
+                       datasets=code_dataset,
+                       ignore_case=True,
+                       save_root=save_root)
+    code_vocab.save_pickle(code_path)
+    node_vocab = Vocab(name=node_name,
+                       method='word',
+                       datasets=node_dataset,
+                       ignore_case=True,
+                       save_root=save_root,
+                       index_offset=len(code_vocab))
+    node_vocab.save_pickle(node_path)
+
+    return code_vocab, node_vocab
