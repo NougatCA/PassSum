@@ -100,7 +100,7 @@ def init_dataset(args, language, split, load_if_saved=True) -> CodeDataset:
             assert isinstance(obj, CodeDataset)
             obj.args = args
             logger.info(f'Dataset instance loaded from: {path}')
-            print_paths(obj.paths)
+            print_paths(obj.paths_dict)
             return obj
     dataset = CodeDataset(args=args,
                           dataset_name=name,

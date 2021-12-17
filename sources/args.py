@@ -129,6 +129,16 @@ class PreprocessingArguments:
         metadata={'help': 'Maximum length of path sequence'}
     )
 
+    max_id_len: int = field(
+        default=10,
+        metadata={'help': 'Maximum length of id sequence'}
+    )
+
+    max_node_len: int = field(
+        default=30,
+        metadata={'help': 'Maximum length of node sequence'}
+    )
+
     max_nl_len: int = field(
         default=64,
         metadata={'help': 'Maximum length of the nl sequence'}

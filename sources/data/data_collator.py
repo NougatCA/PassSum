@@ -16,14 +16,37 @@ def collate_fn(batch, args, code_vocab, node_vocab):
 
     code_raw, path_raw, nl_raw = map(list, zip(*batch))
 
-    model_inputs['code_input_ids'], model_inputs['attention_mask'] = get_batch_inputs(
+    model_inputs['code_input_ids'], code_attention_mask = get_batch_inputs(
         batch=code_raw,
         vocab=code_vocab,
         processor=Vocab.sep_processor,
         max_len=args.max_code_len
     )
 
-    model_inputs['id_inputs'], model_inputs['id_seq_lens'], model_inputs['node_inputs'], model_inputs['node_seq_lens']
+    model_inputs['path_seq_lens'] = get_seq_lens(path_raw)
+    path_attention_mask = generate_attention_mask(model_inputs['path_seq_lens'])
+
+    model_inputs['attention_mask'] = torch.cat([code_attention_mask, path_attention_mask], dim=-1)
+
+    id_inputs = []
+    node_inputs = []
+    for tuples in path_raw:
+        for (nodes, ids) in tuples:
+            node_inputs.append(nodes)
+            id_inputs.append(ids)
+    id_inputs = indices_from_batch(batch=id_inputs,
+                                   vocab=code_vocab,
+                                   add_eos=True,
+                                   max_length=args.max_id_len)
+    model_inputs['id_seq_lens'] = get_seq_lens(id_inputs)
+    model_inputs['id_inputs'] = pad_batch(id_inputs)  # [B, T]
+
+    node_inputs = indices_from_batch(batch=node_inputs,
+                                     vocab=node_vocab,
+                                     add_eos=True,
+                                     max_length=args.max_node_len)
+    model_inputs['node_seq_lens'] = get_seq_lens(node_inputs)
+    model_inputs['node_inputs'] = pad_batch(node_inputs)  # [B, T]
 
     model_inputs['decoder_input_ids'], model_inputs['decoder_attention_mask'] = get_batch_inputs(
         batch=nl_raw,
@@ -89,3 +112,67 @@ def pad_batch(batch, pad_value=0):
     """
     batch = list(zip(*itertools.zip_longest(*batch, fillvalue=pad_value)))
     return torch.tensor([list(b) for b in batch]).long()
+
+
+def get_seq_lens(batch: list):
+    """
+    Returns the sequence lengths of given batch.
+    Args:
+        batch (list): given batch
+
+    Returns:
+        list:
+            - sequence length of each sequence
+    """
+    return [len(seq) for seq in batch]
+
+
+def indices_from_batch(batch, vocab: Vocab, add_sos=False, add_eos=False, max_length=None):
+    """
+    Translate the word in batch to corresponding index by given vocab, and add EOS token to the end of each sentence
+    Args:
+        batch (list): batch to be translated, [B, ~T]
+        vocab (vocab.Vocab): Vocab
+        add_sos (bool): True when need to add SOS token to the start of each sentence
+        add_eos (bool): True when need to add EOS token to the end of each sentence
+        max_length (int):
+
+    Returns:
+        list:
+            - translated batch, [B, ~T]
+    """
+    if add_sos and add_eos:
+        reserve_n_token = 2
+    elif not add_eos and add_sos:
+        reserve_n_token = 0
+    else:
+        reserve_n_token = 1
+
+    indices = []
+    for sentence in batch:
+        if max_length and len(sentence) > max_length - reserve_n_token:
+            sentence = sentence[:max_length - reserve_n_token]
+        indices_sentence = []
+        if add_sos:
+            indices_sentence.append(vocab.get_index(Vocab.SOS_TOKEN))
+        for word in sentence:
+            indices_sentence.append(vocab.get_index(word))
+        if add_eos:
+            indices_sentence.append(vocab.get_index(Vocab.EOS_TOKEN))
+        indices.append(indices_sentence)
+    return indices
+
+
+def generate_attention_mask(seq_lens):
+    """
+    Generate attention mask from sequence lengths.
+    Args:
+        seq_lens (list): sequence lengths
+
+    Returns:
+        torch.Tensor: attention mask, [B, T]
+    """
+    attention_mask = torch.zeros(len(seq_lens), max(seq_lens)).long()
+    for i, seq_len in enumerate(seq_lens):
+        attention_mask[i, :seq_len] = 1
+    return attention_mask
