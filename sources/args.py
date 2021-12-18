@@ -38,12 +38,12 @@ class RuntimeArguments:
     )
 
     batch_size: int = field(
-        default=128,
+        default=4,
         metadata={'help': 'Batch size for training on each device'}
     )
 
     eval_batch_size: int = field(
-        default=64,
+        default=8,
         metadata={'help': 'Batch size for evaluation on each device'}
     )
 
@@ -109,14 +109,9 @@ class SavingArguments:
 class PreprocessingArguments:
     """Arguments for data preprocessing."""
 
-    vocab_size: int = field(
+    code_vocab_size: int = field(
         default=50000,
         metadata={'help': 'Maximum size of uni-vocab'}
-    )
-
-    vocab_name: str = field(
-        default='uni',
-        metadata={'help': 'Name of the uni-vocab'}
     )
 
     max_code_len: int = field(

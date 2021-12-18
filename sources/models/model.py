@@ -4,8 +4,10 @@ from torch.nn import CrossEntropyLoss
 
 from transformers import BartConfig, BartPretrainedModel, BartModel
 from transformers.modeling_outputs import Seq2SeqLMOutput
+from transformers.file_utils import ModelOutput
 
 import logging
+from typing import Dict, Any
 
 from .path_encoding import PathEncoding
 
@@ -34,6 +36,8 @@ class PassSum(BartPretrainedModel):
 
     def __init__(self, config: BartConfig, node_vocab_size):
         super(PassSum, self).__init__(config)
+        self.d_model = config.d_model
+
         self.model = BartModel(config)
         self.register_buffer("final_logits_bias", torch.zeros((1, self.model.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
@@ -50,6 +54,34 @@ class PassSum(BartPretrainedModel):
 
     def get_decoder(self):
         return self.model.get_decoder()
+
+    def _prepare_encoder_decoder_kwargs_for_generation(
+            self,
+            # input_ids: torch.LongTensor,
+            code_input_ids,
+            id_inputs,
+            id_seq_lens,
+            node_inputs,
+            node_seq_lens,
+            path_seq_lens,
+            model_kwargs
+    ) -> Dict[str, Any]:
+        if "encoder_outputs" not in model_kwargs:
+            # retrieve encoder hidden states
+            encoder = self.get_encoder()
+            encoder_kwargs = {
+                argument: value
+                for argument, value in model_kwargs.items()
+                if not (argument.startswith("decoder_") or argument.startswith("cross_attn"))
+            }
+            code_embedded = self.code_embedding(code_input_ids)  # [B, T_code, H]
+            # [B, T_path, H]
+            path_embedded = self.path_encoding(id_inputs, id_seq_lens, node_inputs, node_seq_lens, path_seq_lens)
+            inputs_embedded = torch.cat([code_embedded, path_embedded], dim=-2)  # [B, T_code+T_path, H]
+            model_kwargs["encoder_outputs"]: ModelOutput = encoder(input_embeds=inputs_embedded,
+                                                                   return_dict=True,
+                                                                   **encoder_kwargs)
+        return model_kwargs
 
     def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
         new_embeddings = super().resize_token_embeddings(new_num_tokens)

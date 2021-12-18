@@ -3,9 +3,9 @@ import torch
 
 from typing import List
 import itertools
+import numpy as np
 
 from data.vocab import Vocab
-import enums
 
 
 def collate_fn(batch, args, code_vocab, node_vocab):
@@ -22,6 +22,8 @@ def collate_fn(batch, args, code_vocab, node_vocab):
         processor=Vocab.sep_processor,
         max_len=args.max_code_len
     )
+
+    path_raw = random_sample_path(path_raw, args.max_path_len)
 
     model_inputs['path_seq_lens'] = get_seq_lens(path_raw)
     path_attention_mask = generate_attention_mask(model_inputs['path_seq_lens'])
@@ -154,11 +156,11 @@ def indices_from_batch(batch, vocab: Vocab, add_sos=False, add_eos=False, max_le
             sentence = sentence[:max_length - reserve_n_token]
         indices_sentence = []
         if add_sos:
-            indices_sentence.append(vocab.get_index(Vocab.SOS_TOKEN))
+            indices_sentence.append(vocab.get_sos_index())
         for word in sentence:
             indices_sentence.append(vocab.get_index(word))
         if add_eos:
-            indices_sentence.append(vocab.get_index(Vocab.EOS_TOKEN))
+            indices_sentence.append(vocab.get_eos_index())
         indices.append(indices_sentence)
     return indices
 
@@ -176,3 +178,24 @@ def generate_attention_mask(seq_lens):
     for i, seq_len in enumerate(seq_lens):
         attention_mask[i, :seq_len] = 1
     return attention_mask
+
+
+def random_sample_path(path_raw, max_path_len):
+    """
+    Randomly sample path from path_raw.
+    Args:
+        path_raw (list): path raw
+        max_path_len (int): max path length
+
+    Returns:
+        list: sampled path
+    """
+    paths = []
+    for path in path_raw:
+        if len(path) > max_path_len:
+            indices = np.random.choice(len(path), max_path_len, replace=False)
+            indices = sorted(indices)
+            paths.append([path[i] for i in indices])
+        else:
+            paths.append(path)
+    return paths

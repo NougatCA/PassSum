@@ -58,7 +58,8 @@ def run_summarization(
             code_vocab, node_vocab = trained_vocab
         else:
             logger.info('Loading vocabularies from files')
-            code_vocab, node_vocab = load_vocab(vocab_root=trained_vocab, name=args.vocab_name)
+            code_vocab = load_vocab(vocab_root=trained_vocab, name='code')
+            node_vocab = load_vocab(vocab_root=trained_vocab, name='node')
     else:
         logger.info('Building vocabularies')
         code_vocab, node_vocab = init_vocab(
@@ -180,17 +181,18 @@ def run_summarization(
                                              greater_is_better=True,
                                              ignore_data_skip=False,
                                              label_smoothing_factor=args.label_smoothing,
-                                             report_to=['tensorboard'],
+                                             report_to=[],
                                              dataloader_pin_memory=True,
                                              predict_with_generate=True)
     trainer = CodeTrainer(main_args=args,
-                          uni_vocab=uni_vocab,
+                          code_vocab=code_vocab,
+                          node_vocab=node_vocab,
                           model=model,
                           args=training_args,
                           data_collator=None,
                           train_dataset=datasets['train'] if 'train' in datasets else None,
                           eval_dataset=datasets['valid'] if 'valid' in datasets else None,
-                          tokenizer=uni_vocab,
+                          tokenizer=code_vocab,
                           model_init=None,
                           compute_metrics=compute_valid_metrics,
                           callbacks=[

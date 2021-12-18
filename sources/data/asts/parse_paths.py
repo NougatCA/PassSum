@@ -6,8 +6,8 @@ import re
 import enums
 
 
-LANGUAGE = {enums.LANG_PYTHON: Language('build/my-languages.so', 'python'),
-            enums.LANG_JAVA: Language('build/my-languages.so', 'java')}
+LANGUAGE = {enums.LANG_PYTHON: Language('data/asts/build/my-languages.so', 'python'),
+            enums.LANG_JAVA: Language('data/asts/build/my-languages.so', 'java')}
 
 
 parser = Parser()
@@ -167,13 +167,13 @@ def parse_paths(source, lang):
     return tuple_paths
 
 
-# def lang_sample(lang):
-#     import random
-#     with open(f'../../../../dataset/{lang}/valid/source.code') as f:
-#         line = f.readlines()[random.randint(0, 1000)]
-#     return line
-#
-#
+def lang_sample(lang):
+    import random
+    with open(f'../../../../dataset/{lang}/valid/source.code') as f:
+        line = f.readlines()[random.randint(0, 1000)]
+    return line
+
+
 # lang = 'java'
 #
 # source = lang_sample(lang)

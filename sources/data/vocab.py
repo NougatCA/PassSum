@@ -54,7 +54,7 @@ class Vocab(object):
             additional_special_symbols=None,
             ignore_case=False,
             save_root=None,
-            index_offset=None,
+            index_offset=None
     ):
         """
         Initialize a vocabulary and train the tokenizer.
@@ -332,6 +332,8 @@ class Vocab(object):
 
     def save_pickle(self, path):
         """Save to binary pickle file"""
+        if not path.endswith('.pk'):
+            path += '.pk'
         with open(path, mode='wb') as f:
             pickle.dump(self, f)
         logger.info(f'Vocab saved to {path}')
@@ -378,31 +380,36 @@ def init_vocab(vocab_save_dir,
                datasets: tuple,
                load_if_saved=True,
                save_root=None) -> (Vocab, Vocab):
-    code_name = f'code.bpe.vocab.{code_vocab_size}'
-    node_name = f'node.word.vocab.none'
+    code_name = f'code.bpe.vocab.{code_vocab_size}.pk'
+    node_name = f'node.word.vocab.none.pk'
     code_path = os.path.join(vocab_save_dir, code_name)
     node_path = os.path.join(vocab_save_dir, node_name)
-    if load_if_saved:
+    if load_if_saved and os.path.exists(code_path) and os.path.exists(node_path):
         code_vocab, node_vocab = None, None
-        for vocab, path in [[code_vocab, code_path], [node_vocab, node_path]]:
-            if os.path.exists(path) and os.path.isfile(path):
-                logger.info(f'Trying to load saved binary pickle file from: {path}')
-                with open(path, mode='rb') as f:
-                    vocab = pickle.load(f)
-                assert isinstance(vocab, Vocab)
-                if save_root:
-                    vocab.save(save_root)
-        return code_vocab, node_vocab
+        if os.path.exists(code_path) and os.path.isfile(code_path):
+            with open(code_path, mode='rb') as f:
+                obj = pickle.load(f)
+            assert isinstance(obj, Vocab)
+            code_vocab = obj
+            if save_root:
+                code_vocab.save(save_root)
+        if os.path.exists(node_path) and os.path.isfile(node_path):
+            with open(node_path, mode='rb') as f:
+                obj = pickle.load(f)
+            assert isinstance(obj, Vocab)
+            node_vocab = obj
+            if save_root:
+                node_vocab.save(save_root)
+        if code_vocab and node_vocab:
+            return code_vocab, node_vocab
+
     # iterate through all datasets
     codes, paths, nls = datasets
-    code_dataset = []
+    code_dataset = [seq.split() for seq in codes + nls]
     node_dataset = []
-    for code, path, nl in zip(codes, paths, nls):
-        code_dataset += code
-        code_dataset += nl
+    for path in paths:
         for p in path:
-            node_dataset += p[0]
-            code_dataset += p[1]
+            node_dataset.append(p[0])
 
     code_vocab = Vocab(name=code_name,
                        method='bpe',
@@ -415,8 +422,7 @@ def init_vocab(vocab_save_dir,
                        method='word',
                        datasets=node_dataset,
                        ignore_case=True,
-                       save_root=save_root,
-                       index_offset=len(code_vocab))
+                       save_root=save_root)
     node_vocab.save_pickle(node_path)
 
     return code_vocab, node_vocab

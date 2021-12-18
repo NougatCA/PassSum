@@ -2,8 +2,9 @@
 import logging
 import random
 import re
+from tqdm import tqdm
 
-from asts.parse_paths import parse_paths
+from .asts.parse_paths import parse_paths
 
 
 logger = logging.getLogger(__name__)
@@ -81,13 +82,13 @@ def extract_paths(codes, nls, lang):
     paths_list = []
     new_codes = []
     new_nls = []
-    for code, nl in zip(codes, nls):
+    for code, nl in tqdm(zip(codes, nls), desc='Extracting paths', total=len(codes)):
         try:
             paths = parse_paths(code, lang)
         except Exception:
             continue
-        new_codes.append(clean_code(code))
-        new_nls.append(nl)
+        new_codes.append(clean_code(code).strip())
+        new_nls.append(nl.strip())
         paths_list.append(paths)
 
     return new_codes, paths_list, new_nls

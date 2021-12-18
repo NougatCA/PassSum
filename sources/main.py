@@ -81,6 +81,8 @@ if __name__ == '__main__':
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     main_args.use_cuda = torch.cuda.is_available()
     main_args.parallel = torch.cuda.device_count() > 1
+    if main_args.use_cuda is False:
+        main_args.fp16 = False
 
     # set random seed
     if main_args.random_seed > 0:
