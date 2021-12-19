@@ -1,0 +1,8 @@
+tokenizers==0.10.3
+tqdm==4.61.2
+numpy==1.21.2
+psutil==5.8.0
+scikit-learn==1.0.1
+prettytable==2.4.0
+transformers==4.12.3
+packaging==21.2

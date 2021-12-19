@@ -104,7 +104,7 @@ def run_summarization(
                             is_encoder_decoder=True,
                             decoder_start_token_id=Vocab.START_VOCAB.index(Vocab.SOS_TOKEN),
                             forced_eos_token_id=Vocab.START_VOCAB.index(Vocab.EOS_TOKEN),
-                            max_length=args.max_nl_len,
+                            max_length=args.max_nl_len + 5,
                             min_length=1,
                             num_beams=args.beam_width,
                             num_labels=2)
@@ -233,7 +233,7 @@ def run_summarization(
     trainer.compute_metrics = compute_test_metrics
     predict_results = trainer.predict(test_dataset=datasets['test'],
                                       metric_key_prefix='test',
-                                      max_length=args.max_nl_len,
+                                      max_length=args.max_nl_len + 5,
                                       num_beams=args.beam_width)
     predict_metrics = predict_results.metrics
     references = predict_metrics.pop('test_references')
